@@ -69,14 +69,14 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-004 — checker: require verified IP information before LIVE output
 
-- Status: Hold.
-- Delivery mode: Undecided.
+- Status: Drafted.
+- Delivery mode: Issue.
 - Location: Not published.
 - Evidence class: Source-proven on current upstream; dependency behavior verified; endpoint occurrence not observed.
 - Internal priority: High.
 - Confidence: High.
 - Type: Validation.
-- Publication target: Undecided.
+- Publication target: pull request comment.
 - Summary: A decoded response can reach `LIVE` output without a 2xx status or nonempty `IPInfo.IP`.
 - Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
   `internal/checker/checker.go:22-65,82-129` checks neither final status nor `IPInfo.IP`.
@@ -92,7 +92,7 @@ Next finding ID: ISSUE-2026-029
   Keep optional IPInfo fields optional and retain retry and country-filter behavior.
 - Verification: The source and dependency contracts prove reachability.
   A runtime replay should cover 4xx JSON, 2xx without `ip`, and complete 2xx after state isolation.
-- Missing publication evidence: User-selected delivery mode and exact target.
+- Missing publication evidence: Exact PR #300 comment draft and user approval.
   Runtime replay remains required before claiming observed endpoint-independent behavior.
 
 ### ISSUE-2026-005 — server: stream unchanged upstream response bodies
@@ -119,14 +119,14 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-006 — daemon: preserve all server options in service arguments
 
-- Status: Hold.
-- Delivery mode: Undecided.
+- Status: Implementing.
+- Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Source-proven on current upstream; dependency and platform rendering verified; runtime not observed.
 - Internal priority: High.
 - Confidence: High.
 - Type: Mapping.
-- Publication target: Undecided.
+- Publication target: new pull request.
 - Summary: Service arguments omit five parsed options that control server error and retry behavior.
 - Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
   `internal/daemon/daemon.go:13-42` omits five values parsed by `internal/runner/options.go:36-37,68-70`.
@@ -141,7 +141,8 @@ Next finding ID: ISSUE-2026-029
 - Risks and boundaries: Exclude checker and recursive daemon flags and preserve exact parser spellings and values.
   Service quoting, stdin lifetime, SIGTERM handling, and Windows issue #220 are separate lifecycle concerns.
 - Verification: Compare the five rendered service arguments and reparsed values with an equivalent direct invocation.
-- Missing publication evidence: User-selected delivery mode and exact target.
+- Implementation: Branch `fix/issue-2026-006-daemon-arguments`; focused verification pending.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
   An installed-service replay is required before claiming observed platform behavior.
 
 ### ISSUE-2026-007 — proxymanager: keep watch reloads across atomic file replacement
@@ -223,14 +224,14 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-011 — runner: reject checker concurrency below one
 
-- Status: Hold.
-- Delivery mode: Undecided.
+- Status: Implementing.
+- Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Observed CLI panic; source and dependency contracts verified on current upstream.
 - Internal priority: Medium.
 - Confidence: High.
 - Type: Validation.
-- Publication target: Undecided.
+- Publication target: new pull request.
 - Summary: The raw `--goroutine` value reaches a pool API that panics below one.
 - Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
   `internal/runner/options.go:65-66` accepts integers and `validator.go:15-88` has no lower-bound check.
@@ -244,7 +245,8 @@ Next finding ID: ISSUE-2026-029
 - Risks and boundaries: Do not reject the unused flag in address/server mode, invent an upper cap, or alter valid values.
 - Verification: Current behavior was observed for `-1`, `0`, `1`, and `50`.
   After a fix, invalid values must return actionable errors without panic and valid values must remain accepted.
-- Missing publication evidence: User-selected delivery mode and exact target.
+- Implementation: Branch `fix/issue-2026-011-goroutine`; focused verification pending.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
 
 ### ISSUE-2026-012 — server: decouple retry backoff from request timeout
 
@@ -400,14 +402,14 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-020 — build: include every package in the short test target
 
-- Status: Hold.
-- Delivery mode: Undecided.
+- Status: Implementing.
+- Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Observed current test-scope omission and successful expanded module scope.
 - Internal priority: High.
 - Confidence: High.
 - Type: Build and verification orchestration.
-- Publication target: Undecided.
+- Publication target: new pull request.
 - Summary: `make test` and `make test-extra` omit the maintained `pkg/helper/awsurl` test package.
 - Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
   `Makefile:10-15` runs only `pkg/mubeng` and `pkg/helper`.
@@ -421,18 +423,19 @@ Next finding ID: ISSUE-2026-029
 - Risks and boundaries: Current tests are local and deterministic, but future short tests must retain that contract.
   `./...` also compiles packages without tests and runs Go's default vet behavior.
 - Verification: `make test` must cover the same three test packages as `go test -short ./...` and pass.
-- Missing publication evidence: User-selected delivery mode and exact target.
+- Implementation: Branch `build/issue-2026-020-test-scope`; focused verification pending.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
 
 ### ISSUE-2026-021 — server: route SIGTERM through graceful shutdown
 
-- Status: Hold.
-- Delivery mode: Undecided.
+- Status: Implementing.
+- Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Observed direct SIGTERM divergence; installed-service path remains source-proven.
 - Internal priority: High.
 - Confidence: High.
 - Type: Process and resource lifecycle.
-- Publication target: Undecided.
+- Publication target: new pull request.
 - Summary: The installed child runs `server.Run` directly, which handles `os.Interrupt` but not `SIGTERM`.
 - Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
   `internal/server/server.go:67-75` registers only `os.Interrupt`.
@@ -446,7 +449,8 @@ Next finding ID: ISSUE-2026-029
 - Risks and boundaries: This exposes existing `Stop` map synchronization, remote-close, and ignored-error weaknesses.
   Those separate lifecycle problems are outside this signal-routing scope.
 - Verification: Start the same server twice, send `SIGTERM` and `SIGINT`, and require the same log and clean exit path.
-- Missing publication evidence: User-selected delivery mode and exact target.
+- Implementation: Branch `fix/issue-2026-021-sigterm`; focused verification pending.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
   Installed-service reproduction is required only before claiming observed service-manager behavior.
 
 ### ISSUE-2026-022 — build: restore the missing golangci-lint fallback
