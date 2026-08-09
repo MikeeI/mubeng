@@ -72,19 +72,28 @@ Next finding ID: ISSUE-2026-029
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; endpoint behavior not observed.
+- Evidence class: Source-proven on current upstream; dependency behavior verified; endpoint occurrence not observed.
 - Internal priority: High.
 - Confidence: High.
 - Type: Validation.
 - Publication target: Undecided.
 - Summary: A decoded response can reach `LIVE` output without a 2xx status or nonempty `IPInfo.IP`.
-- Evidence: `internal/checker/checker.go:108-128` and `internal/checker/ipinfo.go:5-15`.
+- Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
+  `internal/checker/checker.go:22-65,82-129` checks neither final status nor `IPInfo.IP`.
+  `retryablehttp v0.7.8` returns final 4xx and 501 responses without an error.
+  `internal/checker/vars.go:3-7` retains one package-global result across checks.
+  Open PR [#300](https://github.com/mubeng/mubeng/pull/300) changes the same path but retains these behaviors.
 - Shared change pressure: HTTP status, decoded identity, filtering, and LIVE classification form one success decision.
-- Impact: Source proves error-shaped JSON can satisfy the current success path; endpoint occurrence is not measured.
-- Proposed direction: Require a final 2xx response and nonempty `ip` before filtering or output.
-- Risks and boundaries: Keep optional IPInfo fields optional and retain existing retry and country-filter behavior.
-- Verification: Replay 4xx JSON, 2xx without `ip`, and a complete 2xx response; only the last may be LIVE.
-- Missing publication evidence: Current `upstream/master`, endpoint-independent reproduction, and prior-art research.
+- Impact: Source proves 4xx or 501 JSON and 2xx JSON without `ip` can satisfy the current success path.
+  Endpoint frequency and user impact are not measured.
+- Proposed direction: First isolate retry clients and decoded results per check as owned by `ISSUE-2026-001`.
+  Then require a final 2xx response and nonempty `ip` before filtering or output.
+- Risks and boundaries: A standalone nonempty-IP guard is unsound because absent JSON keys retain global stale fields.
+  Keep optional IPInfo fields optional and retain retry and country-filter behavior.
+- Verification: The source and dependency contracts prove reachability.
+  A runtime replay should cover 4xx JSON, 2xx without `ip`, and complete 2xx after state isolation.
+- Missing publication evidence: User-selected delivery mode and exact target.
+  Runtime replay remains required before claiming observed endpoint-independent behavior.
 
 ### ISSUE-2026-005 — server: stream unchanged upstream response bodies
 
@@ -113,19 +122,27 @@ Next finding ID: ISSUE-2026-029
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; runtime divergence not reproduced.
+- Evidence class: Source-proven on current upstream; dependency and platform rendering verified; runtime not observed.
 - Internal priority: High.
 - Confidence: High.
 - Type: Mapping.
 - Publication target: Undecided.
 - Summary: Service arguments omit five parsed options that control server error and retry behavior.
-- Evidence: `internal/daemon/daemon.go:13-42` and `internal/server/handler.go:56-88,190-280`.
+- Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
+  `internal/daemon/daemon.go:13-42` omits five values parsed by `internal/runner/options.go:36-37,68-70`.
+  `internal/server/handler.go:56-88,190-280` consumes every omitted value.
+  Commit [3c343f7](https://github.com/mubeng/mubeng/commit/3c343f7c39c0d076935ef7a8686966593aab023c)
+  previously fixed the same manually maintained daemon-argument mapping.
 - Shared change pressure: Direct and service starts must map the same server-owned options into one runtime contract.
-- Impact: Source proves daemon defaults replace explicit CLI values; an installed service was not inspected.
-- Proposed direction: Forward both enabled booleans and all three numeric limits through `cfg.Arguments`.
-- Risks and boundaries: Exclude checker and recursive daemon flags and preserve exact parser names and values.
-- Verification: Compare rendered service arguments and parsed options with an equivalent direct invocation.
-- Missing publication evidence: Current `upstream/master`, service reproduction, platform scope, and prior-art research.
+- Impact: Source proves service children reset both booleans to false and numeric limits to `3`, `10`, and `0`.
+  An installed service was not inspected.
+- Proposed direction: Append enabled `--rotate-on-error` and `--remove-on-error` flags.
+  Always forward `--max-errors`, `--max-redirs`, and `--max-retries`, including zero and negative values.
+- Risks and boundaries: Exclude checker and recursive daemon flags and preserve exact parser spellings and values.
+  Service quoting, stdin lifetime, SIGTERM handling, and Windows issue #220 are separate lifecycle concerns.
+- Verification: Compare the five rendered service arguments and reparsed values with an equivalent direct invocation.
+- Missing publication evidence: User-selected delivery mode and exact target.
+  An installed-service replay is required before claiming observed platform behavior.
 
 ### ISSUE-2026-007 — proxymanager: keep watch reloads across atomic file replacement
 
@@ -209,19 +226,25 @@ Next finding ID: ISSUE-2026-029
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; CLI panic not reproduced.
+- Evidence class: Observed CLI panic; source and dependency contracts verified on current upstream.
 - Internal priority: Medium.
 - Confidence: High.
 - Type: Validation.
 - Publication target: Undecided.
 - Summary: The raw `--goroutine` value reaches a pool API that panics below one.
-- Evidence: `internal/runner/options.go:65-66`, `validator.go:15-88`, and `checker.go:22-23`.
+- Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
+  `internal/runner/options.go:65-66` accepts integers and `validator.go:15-88` has no lower-bound check.
+  `checker.go:22-23` passes the value to `conc v0.3.0`, whose pool panics below one.
+  `go run . -f FILE -c -g=-1` and `-g 0` reproduced that panic; `-g 1` and `-g 50` exited normally.
+  Issue [#159](https://github.com/mubeng/mubeng/issues/159) and PR
+  [#170](https://github.com/mubeng/mubeng/pull/170) are related historical concurrency work, not duplicates.
 - Shared change pressure: CLI worker validation and pool construction preserve one concurrency lower-bound invariant.
-- Impact: Source and the pinned `conc v0.3.0` contract prove a panic path; occurrence is not measured.
-- Proposed direction: Reject `Goroutine < 1` in runner validation and keep one as the serial mode.
-- Risks and boundaries: Do not invent an unmeasured upper cap or alter valid concurrency values.
-- Verification: Check `--goroutine=-1`, `0`, `1`, and `50`; invalid values must return errors without panic.
-- Missing publication evidence: Current `upstream/master`, direct CLI reproduction, dependency contract, and prior art.
+- Impact: Invalid checker concurrency reproducibly bypasses normal CLI error handling and emits a Go panic stack.
+- Proposed direction: Reject values below one only when dispatch can reach checker mode and document one as serial mode.
+- Risks and boundaries: Do not reject the unused flag in address/server mode, invent an upper cap, or alter valid values.
+- Verification: Current behavior was observed for `-1`, `0`, `1`, and `50`.
+  After a fix, invalid values must return actionable errors without panic and valid values must remain accepted.
+- Missing publication evidence: User-selected delivery mode and exact target.
 
 ### ISSUE-2026-012 — server: decouple retry backoff from request timeout
 
@@ -380,39 +403,51 @@ Next finding ID: ISSUE-2026-029
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven omission; expanded test scope observed.
+- Evidence class: Observed current test-scope omission and successful expanded module scope.
 - Internal priority: High.
 - Confidence: High.
 - Type: Build and verification orchestration.
 - Publication target: Undecided.
 - Summary: `make test` and `make test-extra` omit the maintained `pkg/helper/awsurl` test package.
-- Evidence: `Makefile:10-15`, `pkg/helper/awsurl/awsurl_test.go:1-7`, and `.github/CONTRIBUTING.md:28-36`.
+- Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
+  `Makefile:10-15` runs only `pkg/mubeng` and `pkg/helper`.
+  `pkg/helper/awsurl/awsurl_test.go:7-116` owns an omitted 11-case `TestParse`.
+  `make test` omitted it, while `go test -short ./...` included all three test packages and passed.
+  PR [#261](https://github.com/mubeng/mubeng/pull/261) added the package after the explicit target was created.
 - Shared change pressure: The repository test command and every maintained package test express one verification contract.
-- Impact: Source proves `TestParse` is skipped; `go test -short ./...` included it and passed.
-- Proposed direction: Replace the two explicit package commands with one module-scoped `go test -short ./...`.
-- Risks and boundaries: Future packages must keep short tests deterministic, local, and free of required network access.
-- Verification: Run `make test` and require the same successful package scope as `go test -short ./...`.
-- Missing publication evidence: Current `upstream/master` and upstream prior-art research.
+- Impact: The repository test command and its CI caller reproducibly skip a maintained package test.
+- Proposed direction: Make `./...` the module-scoped package owner while preserving compact default output.
+  Failure output must remain actionable and full raw output must remain available through verbose mode.
+- Risks and boundaries: Current tests are local and deterministic, but future short tests must retain that contract.
+  `./...` also compiles packages without tests and runs Go's default vet behavior.
+- Verification: `make test` must cover the same three test packages as `go test -short ./...` and pass.
+- Missing publication evidence: User-selected delivery mode and exact target.
 
 ### ISSUE-2026-021 — server: route SIGTERM through graceful shutdown
 
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven wiring; service stop behavior not reproduced.
+- Evidence class: Observed direct SIGTERM divergence; installed-service path remains source-proven.
 - Internal priority: High.
 - Confidence: High.
 - Type: Process and resource lifecycle.
 - Publication target: Undecided.
 - Summary: The installed child runs `server.Run` directly, which handles `os.Interrupt` but not `SIGTERM`.
-- Evidence: `internal/daemon/daemon.go:15-23,41-66`, `internal/server/server.go:67-75`, and
-  `internal/server/utils.go:12-24`.
+- Evidence: Current `upstream/master` is `164c0b1860f26164eac996059be6b1b15da7b265`.
+  `internal/server/server.go:67-75` registers only `os.Interrupt`.
+  A supervised server exited on `SIGTERM` without the interrupt log; `SIGINT` logged `Interrupted. Exiting...` and exited cleanly.
+  `internal/daemon/daemon.go:15-23,41-66` installs child arguments without `-d`, so the child reaches `server.Run`.
+  Merged PR [#227](https://github.com/mubeng/mubeng/pull/227) is related shutdown history but does not handle SIGTERM.
 - Shared change pressure: Foreground, service, and container stops must enter the one server and gateway shutdown path.
-- Impact: Source proves `SIGTERM` bypasses the registered shutdown path; an installed service stop was not observed.
+- Impact: Direct execution proves `SIGTERM` bypasses the registered path while `SIGINT` reaches it.
+  Installed-service and container paths are source-proven but were not executed.
 - Proposed direction: Register `syscall.SIGTERM` beside `os.Interrupt` without redesigning service callbacks.
-- Risks and boundaries: This exposes existing `Stop` synchronization and error-handling weaknesses but does not own them.
-- Verification: Start the server, send `SIGTERM`, and require the same shutdown and exit path as `SIGINT`.
-- Missing publication evidence: Current `upstream/master`, direct and installed-service reproduction, and prior art.
+- Risks and boundaries: This exposes existing `Stop` map synchronization, remote-close, and ignored-error weaknesses.
+  Those separate lifecycle problems are outside this signal-routing scope.
+- Verification: Start the same server twice, send `SIGTERM` and `SIGINT`, and require the same log and clean exit path.
+- Missing publication evidence: User-selected delivery mode and exact target.
+  Installed-service reproduction is required only before claiming observed service-manager behavior.
 
 ### ISSUE-2026-022 — build: restore the missing golangci-lint fallback
 
