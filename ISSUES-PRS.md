@@ -4,7 +4,7 @@ This file is the sole source of truth for every finding's ID, delivery mode, lif
 Read and update this ledger instead of inferring state from chat history, clone reports, or earlier reviews.
 `FORMAT.md` owns research, drafting, implementation authorization, approval, and publication rules.
 
-Next finding ID: ISSUE-2026-025
+Next finding ID: ISSUE-2026-029
 
 
 ## Findings
@@ -146,24 +146,24 @@ Next finding ID: ISSUE-2026-025
 - Verification: Replay atomic replace, partial write, unrelated file events, repeated saves, and watcher shutdown.
 - Missing publication evidence: Current `upstream/master`, Linux/macOS reproduction, fsnotify contract, and prior art.
 
-### ISSUE-2026-008 — server: serialize AWS gateway cache creation and shutdown
+### ISSUE-2026-008 — server: make AWS gateway initialization transactional
 
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; AWS concurrency not reproduced.
+- Evidence class: Source-proven; concurrency and AWS effects not reproduced.
 - Internal priority: High.
 - Confidence: High.
 - Type: Structure and resource lifecycle.
 - Publication target: Undecided.
-- Summary: Gateway cache reads are unlocked, writes are locked, and shutdown has two ownership paths.
-- Evidence: `internal/server/handler.go:208-256`, `proxy.go:15-34`, and `utils.go:12-24`.
-- Shared change pressure: Gateway lookup, creation, cache insertion, and close preserve one resource-ownership invariant.
-- Impact: Source proves a concurrent map access surface and duplicate creation window; AWS impact is not measured.
-- Proposed direction: Use one creation mutex, stop HTTP handling first, snapshot the cache, and close once.
-- Risks and boundaries: Avoid half-created entries, duplicate `Start`, lock-held close I/O, and shutdown races.
-- Verification: Run concurrent same-key creation and shutdown; require one start, one cached value, and one close.
-- Missing publication evidence: Current `upstream/master`, controlled AWS reproduction, lifecycle review, and prior art.
+- Summary: Unsynchronized lookup and incomplete rollback can duplicate, leak, or publish partial AWS gateways.
+- Evidence: `internal/server/handler.go:208-256`, `internal/server/utils.go:12-24,54-56`, and `internal/proxygateway/proxygateway.go:122-266,330-336`.
+- Shared change pressure: Exact identity, initialization, publication, rollback, and close form one ownership invariant.
+- Impact: Source proves map races, duplicate setup, and orphaned partial APIs; AWS frequency and cost are not measured.
+- Proposed direction: Use an exact credential-aware key, deduplicate setup, publish only deployed APIs, and roll back owned failures.
+- Risks and boundaries: Keep AWS I/O outside locks, never delete reused APIs, preserve errors, and drain requests before close.
+- Verification: Exercise same-key concurrency, different credentials, every post-create failure, and shutdown during init.
+- Missing publication evidence: Current `upstream/master`, AWS reproduction, lifecycle review, benchmark, and prior art.
 
 ### ISSUE-2026-009 — runner: return success status for successful information commands
 
@@ -261,24 +261,24 @@ Next finding ID: ISSUE-2026-025
 - Verification: Replay values `0`, `1`, `3`, and `-1`, then compare results with the selected written contract.
 - Missing publication evidence: Maintainer intent, current `upstream/master`, behavior reproduction, and prior art.
 
-### ISSUE-2026-014 — runner: reject stdin with server watch mode
+### ISSUE-2026-014 — runner: own stdin temporary-file lifetime across actions
 
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; CLI behavior not reproduced.
+- Evidence class: Source-proven; platform and combined-mode behavior not reproduced.
 - Internal priority: Medium.
 - Confidence: High.
 - Type: Validation and lifecycle.
 - Publication target: Undecided.
-- Summary: Validation removes the stdin temp file before server watch setup can observe it.
-- Evidence: `internal/runner/validator.go:19-49` and `internal/proxymanager/utils.go:86-97`.
-- Shared change pressure: Input-source lifetime and watch compatibility form one runner-owned CLI invariant.
-- Impact: Source proves stdin plus address-mode watch cannot retain an observable file; frequency is not measured.
-- Proposed direction: Reject stdin with server `--watch` before temporary-file creation.
-- Risks and boundaries: Preserve checker stdin and server watch behavior for real files.
-- Verification: Compare piped and file-backed address-mode watch, plus piped checker mode.
-- Missing publication evidence: Current `upstream/master`, direct CLI reproduction, and prior-art research.
+- Summary: Cleanup is registered late and removes the stdin temp path before daemon or watch consumers can use it.
+- Evidence: `internal/runner/validator.go:19-49`, `internal/runner/options.go:89-93`, `internal/runner/runner.go:14-19`, `internal/daemon/daemon.go:15-23,66`, and `internal/proxymanager/utils.go:86-97`.
+- Shared change pressure: Temporary-file creation, validation, later path use, and removal form one input-source lifetime.
+- Impact: Error paths retain files, while successful POSIX cleanup can remove the path before later consumers open it.
+- Proposed direction: Clean normal flows immediately and reject stdin with daemon or watch unless a persistent owner exists.
+- Risks and boundaries: Preserve checker stdin and file-backed watch, avoid Windows-only behavior, and keep real files untouched.
+- Verification: Cover read and write errors plus piped checker, server, watch, and daemon modes on Linux and Windows.
+- Missing publication evidence: Current `upstream/master`, platform reproduction, CLI compatibility intent, and prior art.
 
 ### ISSUE-2026-015 — checker: report failure stages before country filtering
 
@@ -471,3 +471,79 @@ Next finding ID: ISSUE-2026-025
 - Risks and boundaries: Do not propagate expected first-run stop or uninstall errors.
 - Verification: Force a non-Windows install failure and require the original error with no log or start attempt.
 - Missing publication evidence: Current `upstream/master`, backend failure reproduction, platform scope, and prior art.
+
+### ISSUE-2026-025 — runner: stream stdin into the temporary proxy file
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven; allocation and startup impact not measured.
+- Internal priority: Low.
+- Confidence: High.
+- Type: Algorithm and allocation.
+- Publication target: Undecided.
+- Summary: stdin is fully materialized in memory before the same bytes are written to a temporary file.
+- Evidence: `internal/runner/validator.go:19-33,44-51`.
+- Shared change pressure: stdin ingestion, temporary staging, and proxy-list loading form one startup data path.
+- Impact: Source proves `O(N)` additional peak heap for an `N`-byte list; realistic list sizes and GC cost are not measured.
+- Proposed direction: After `ISSUE-2026-014` resolves cleanup ownership, replace `io.ReadAll` plus `Write` with `io.Copy`.
+- Risks and boundaries: This bounds extra heap, not input or disk size, and changes which simultaneous I/O error is returned.
+- Verification: Measure peak RSS and startup time across representative sizes and inject read and write failures.
+- Missing publication evidence: Current `upstream/master`, measurements, error-contract review, and prior art.
+
+### ISSUE-2026-026 — helper: skip template parsing for literal proxy strings
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven; CPU and allocation impact not measured.
+- Internal priority: Low.
+- Confidence: High.
+- Type: Algorithm and allocation.
+- Publication target: Undecided.
+- Summary: Every literal proxy rotation builds and executes a `text/template` despite containing no template action.
+- Evidence: `pkg/helper/eval.go:22-39`, `internal/proxymanager/utils.go:68-83`, and `internal/server/handler.go:38-42,163-180`.
+- Shared change pressure: Literal detection and dynamic template execution choose one proxy address per rotation.
+- Impact: Source proves parser and allocation work on the default request path; magnitude and literal share are not measured.
+- Proposed direction: Return the input immediately when it lacks `{{`; retain the existing path for dynamic templates.
+- Risks and boundaries: Preserve fresh random values, invalid-template behavior, and exact output for dynamic inputs.
+- Verification: Compare CPU and allocations for literal and dynamic rotations under representative request rates.
+- Missing publication evidence: Current `upstream/master`, focused measurements, workload distribution, and prior art.
+
+### ISSUE-2026-027 — server: gateway eviction lacks a safe ownership contract
+
+- Status: Rejected.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven retention; origin churn, ownership, and quota pressure unverified.
+- Internal priority: Medium.
+- Confidence: High.
+- Type: Resource lifecycle and capacity policy.
+- Publication target: Undecided.
+- Summary: A proposed TTL/LRU gateway reaper cannot safely distinguish owned, idle, or externally reused AWS APIs.
+- Evidence: `internal/server/handler.go:225-253`, `internal/server/utils.go:14-20`, and `internal/proxygateway/proxygateway.go:142-167,330-337`.
+- Shared change pressure: Registry capacity and remote API ownership would require one explicit server policy.
+- Impact: No workload proves material retention; eviction can delete a reused API or one serving an active request.
+- Proposed direction: None; measure origin residency and quota pressure and define API ownership before reconsidering.
+- Risks and boundaries: A cap, TTL, lease system, or worker changes cold starts, admission, shutdown, and remote ownership.
+- Verification: Reconsider only with measured churn, request-lifetime evidence, and an explicit owned-versus-reused contract.
+- Missing publication evidence: None; rejected because frequency and behavior-preserving-fix gates failed.
+
+### ISSUE-2026-028 — checker: output-template reuse lacks material cost evidence
+
+- Status: Rejected.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven repetition; parser cost and workload frequency not measured.
+- Internal priority: Low.
+- Confidence: High.
+- Type: Algorithm and allocation.
+- Publication target: Undecided.
+- Summary: The checker reparses one output template per formatted live result, but material cost is unproven.
+- Evidence: `internal/checker/checker.go:31-49` and `internal/checker/format.go:63-82`.
+- Shared change pressure: Template parse timing and concurrent rendering would form one checker-run output contract.
+- Impact: Repetition is source-proven, but network checks and rendering dominate without contrary benchmark evidence.
+- Proposed direction: None; benchmark representative templates and live-result counts before reconsidering lazy reuse.
+- Risks and boundaries: Eager parsing changes panic timing and behavior when no result reaches the formatting branch.
+- Verification: Reconsider only if focused CPU and allocation measurements show a material parser share.
+- Missing publication evidence: None; rejected because the non-trivial-cost gate failed.
