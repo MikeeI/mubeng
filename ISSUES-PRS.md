@@ -69,9 +69,9 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-004 — checker: require verified IP information before LIVE output
 
-- Status: Drafted.
+- Status: Published.
 - Delivery mode: Issue.
-- Location: Not published.
+- Location: https://github.com/mubeng/mubeng/pull/300#issuecomment-5234387842
 - Evidence class: Source-proven on current upstream; dependency behavior verified; endpoint occurrence not observed.
 - Internal priority: High.
 - Confidence: High.
@@ -92,8 +92,8 @@ Next finding ID: ISSUE-2026-029
   Keep optional IPInfo fields optional and retain retry and country-filter behavior.
 - Verification: The source and dependency contracts prove reachability.
   A runtime replay should cover 4xx JSON, 2xx without `ip`, and complete 2xx after state isolation.
-- Missing publication evidence: Exact PR #300 comment draft and user approval.
-  Runtime replay remains required before claiming observed endpoint-independent behavior.
+- Missing publication evidence: None for the published source-proven comment.
+  Runtime replay remains required before claiming observed endpoint-independent behavior or implementing a fix.
 
 ### ISSUE-2026-005 — server: stream unchanged upstream response bodies
 
@@ -121,7 +121,8 @@ Next finding ID: ISSUE-2026-029
 
 - Status: Ready.
 - Delivery mode: Pull request.
-- Location: Not published.
+- Location: https://github.com/mubeng/mubeng/issues/316
+- Prerequisite issue: https://github.com/mubeng/mubeng/issues/316
 - Evidence class: Source-proven on current upstream; rendered service arguments observed; installed runtime not observed.
 - Internal priority: High.
 - Confidence: High.
@@ -227,7 +228,8 @@ Next finding ID: ISSUE-2026-029
 
 - Status: Ready.
 - Delivery mode: Pull request.
-- Location: Not published.
+- Location: https://github.com/mubeng/mubeng/issues/313
+- Prerequisite issue: https://github.com/mubeng/mubeng/issues/313
 - Evidence class: Observed CLI panic; source and dependency contracts verified on current upstream.
 - Internal priority: Medium.
 - Confidence: High.
@@ -406,7 +408,8 @@ Next finding ID: ISSUE-2026-029
 
 - Status: Ready.
 - Delivery mode: Pull request.
-- Location: Not published.
+- Location: https://github.com/mubeng/mubeng/issues/315
+- Prerequisite issue: https://github.com/mubeng/mubeng/issues/315
 - Evidence class: Observed current test-scope omission and successful expanded module scope.
 - Internal priority: High.
 - Confidence: High.
@@ -434,7 +437,8 @@ Next finding ID: ISSUE-2026-029
 
 - Status: Ready.
 - Delivery mode: Pull request.
-- Location: Not published.
+- Location: https://github.com/mubeng/mubeng/issues/314
+- Prerequisite issue: https://github.com/mubeng/mubeng/issues/314
 - Evidence class: Observed direct SIGTERM divergence; installed-service path remains source-proven.
 - Internal priority: High.
 - Confidence: High.
