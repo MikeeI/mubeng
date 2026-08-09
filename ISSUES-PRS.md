@@ -119,10 +119,10 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-006 — daemon: preserve all server options in service arguments
 
-- Status: Implementing.
+- Status: Ready.
 - Delivery mode: Pull request.
 - Location: Not published.
-- Evidence class: Source-proven on current upstream; dependency and platform rendering verified; runtime not observed.
+- Evidence class: Source-proven on current upstream; rendered service arguments observed; installed runtime not observed.
 - Internal priority: High.
 - Confidence: High.
 - Type: Mapping.
@@ -140,9 +140,10 @@ Next finding ID: ISSUE-2026-029
   Always forward `--max-errors`, `--max-redirs`, and `--max-retries`, including zero and negative values.
 - Risks and boundaries: Exclude checker and recursive daemon flags and preserve exact parser spellings and values.
   Service quoting, stdin lifetime, SIGTERM handling, and Windows issue #220 are separate lifecycle concerns.
-- Verification: Compare the five rendered service arguments and reparsed values with an equivalent direct invocation.
-- Implementation: Branch `fix/issue-2026-006-daemon-arguments`; focused verification pending.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
+- Verification: `make build` passed.
+  A debugger stopped before `service.New` and observed all five selected values in the final 22-element argument slice.
+- Implementation: Branch `fix/issue-2026-006-daemon-arguments`; commit `45575a0`; pushed to `origin`.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
   An installed-service replay is required before claiming observed platform behavior.
 
 ### ISSUE-2026-007 — proxymanager: keep watch reloads across atomic file replacement
@@ -224,7 +225,7 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-011 — runner: reject checker concurrency below one
 
-- Status: Implementing.
+- Status: Ready.
 - Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Observed CLI panic; source and dependency contracts verified on current upstream.
@@ -243,10 +244,11 @@ Next finding ID: ISSUE-2026-029
 - Impact: Invalid checker concurrency reproducibly bypasses normal CLI error handling and emits a Go panic stack.
 - Proposed direction: Reject values below one only when dispatch can reach checker mode and document one as serial mode.
 - Risks and boundaries: Do not reject the unused flag in address/server mode, invent an upper cap, or alter valid values.
-- Verification: Current behavior was observed for `-1`, `0`, `1`, and `50`.
-  After a fix, invalid values must return actionable errors without panic and valid values must remain accepted.
-- Implementation: Branch `fix/issue-2026-011-goroutine`; focused verification pending.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
+- Verification: Before the fix, `-1` and `0` panicked while `1` and `50` exited normally.
+  After the fix, invalid values returned the configured validation error without panic and valid values still exited normally.
+  `make build`, rendered help inspection, Go formatting, and LSP diagnostics passed.
+- Implementation: Branch `fix/issue-2026-011-goroutine`; commit `54535b5`; pushed to `origin`.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
 
 ### ISSUE-2026-012 — server: decouple retry backoff from request timeout
 
@@ -402,7 +404,7 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-020 — build: include every package in the short test target
 
-- Status: Implementing.
+- Status: Ready.
 - Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Observed current test-scope omission and successful expanded module scope.
@@ -422,13 +424,15 @@ Next finding ID: ISSUE-2026-029
   Failure output must remain actionable and full raw output must remain available through verbose mode.
 - Risks and boundaries: Current tests are local and deterministic, but future short tests must retain that contract.
   `./...` also compiles packages without tests and runs Go's default vet behavior.
-- Verification: `make test` must cover the same three test packages as `go test -short ./...` and pass.
-- Implementation: Branch `build/issue-2026-020-test-scope`; focused verification pending.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
+- Verification: Default `make test` printed only `test: ok` and passed all three maintained test packages.
+  `make test VERBOSE=1` streamed the complete package scope.
+  An injected exit 7 printed the underlying status and raw sentinel output, returned nonzero, and removed its temp file.
+- Implementation: Branch `build/issue-2026-020-test-scope`; commit `9c3c2db`; pushed to `origin`.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
 
 ### ISSUE-2026-021 — server: route SIGTERM through graceful shutdown
 
-- Status: Implementing.
+- Status: Ready.
 - Delivery mode: Pull request.
 - Location: Not published.
 - Evidence class: Observed direct SIGTERM divergence; installed-service path remains source-proven.
@@ -448,9 +452,10 @@ Next finding ID: ISSUE-2026-029
 - Proposed direction: Register `syscall.SIGTERM` beside `os.Interrupt` without redesigning service callbacks.
 - Risks and boundaries: This exposes existing `Stop` map synchronization, remote-close, and ignored-error weaknesses.
   Those separate lifecycle problems are outside this signal-routing scope.
-- Verification: Start the same server twice, send `SIGTERM` and `SIGINT`, and require the same log and clean exit path.
-- Implementation: Branch `fix/issue-2026-021-sigterm`; focused verification pending.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts, user approvals, and completed verification.
+- Verification: After the fix, both supervised `SIGTERM` and `SIGINT` runs logged `Interrupted. Exiting...` and exited zero.
+  `make build`, Go formatting, and LSP diagnostics passed.
+- Implementation: Branch `fix/issue-2026-021-sigterm`; commit `6def82e`; pushed to `origin`.
+- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
   Installed-service reproduction is required only before claiming observed service-manager behavior.
 
 ### ISSUE-2026-022 — build: restore the missing golangci-lint fallback
