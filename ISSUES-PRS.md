@@ -4,7 +4,7 @@ This file is the sole source of truth for every finding's ID, delivery mode, lif
 Read and update this ledger instead of inferring state from chat history, clone reports, or earlier reviews.
 `FORMAT.md` owns research, drafting, implementation authorization, approval, and publication rules.
 
-Next finding ID: ISSUE-2026-020
+Next finding ID: ISSUE-2026-025
 
 
 ## Findings
@@ -14,19 +14,20 @@ Next finding ID: ISSUE-2026-020
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; user impact not measured.
+- Evidence class: Source-proven; race not reproduced; user impact not measured.
 - Internal priority: High.
 - Confidence: High.
-- Type: Structure and resource lifecycle.
+- Type: Structure and synchronization.
 - Publication target: Undecided.
 - Summary: Parallel checker workers mutate one retry client and one package-global `IPInfo`.
 - Evidence: `internal/checker/checker.go:23-32,82-128` and `internal/checker/vars.go:3-6`.
-- Shared change pressure: Retry state, result state, transport, and cleanup change with one proxy-check execution.
-- Impact: Source proves cross-worker state can be mixed; occurrence frequency and affected output are not measured.
-- Proposed direction: Let each `check` own its retry client, local `IPInfo`, transport, body, and cleanup.
-- Risks and boundaries: Preserve retry count, timeout, country filtering, output, and per-check transport cleanup.
-- Verification: Run two distinguishable proxy responses concurrently under `-race` and exercise read/decode failures.
-- Missing publication evidence: Current `upstream/master`, focused reproduction, and upstream prior-art research.
+- Shared change pressure: Retry state and decoded result state change with one proxy-check execution.
+- Impact: Source proves cross-worker request routing and decoded fields can be mixed; occurrence is not measured.
+- Proposed direction: Let each `check` own its retry client and local `IPInfo`.
+- Risks and boundaries: Preserve retry count, timeout, request routing, output, and per-check transport ownership.
+  Open PR [#300](https://github.com/mubeng/mubeng/pull/300) changes the same block but retains shared state.
+- Verification: Run two distinguishable proxy responses concurrently under `-race`, including a malformed payload.
+- Missing publication evidence: Current `upstream/master`, focused reproduction, PR #300 coordination, and prior art.
 
 ### ISSUE-2026-002 — server: retain the selected proxy across rotation intervals
 
@@ -90,19 +91,22 @@ Next finding ID: ISSUE-2026-020
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; performance not measured.
-- Internal priority: High.
+- Evidence class: Source-proven; performance and compatibility impact not measured.
+- Internal priority: Medium.
 - Confidence: Medium.
 - Type: Algorithm and resource lifecycle.
 - Publication target: Undecided.
 - Summary: The response path buffers every body even though it only removes hop-by-hop headers.
-- Evidence: `internal/server/handler.go:93-103,154-160` and the pinned `goproxy v1.7.2` contract.
+- Evidence: `internal/server/handler.go:93-103,154-160`, `go.mod:12`, and
+  https://github.com/elazarl/goproxy/blob/v1.7.2/http.go#L34-L36
+  plus https://github.com/elazarl/goproxy/blob/v1.7.2/http.go#L92-L95.
 - Shared change pressure: Response-body ownership and downstream copying change with the one passthrough path.
 - Impact: Memory scales with payload size and first-byte delivery waits for EOF; representative cost is not measured.
-- Proposed direction: Return the original body to `goproxy` and remove full buffering and premature close ownership.
-- Risks and boundaries: Preserve header sanitation, content length, body closure, and future transformation boundaries.
-- Verification: Proxy a slow chunked response and a large body; confirm first-chunk delivery before EOF.
-- Missing publication evidence: Current `upstream/master`, pinned dependency verification, benchmark, and prior art.
+- Proposed direction: Return the original body only after accepting goproxy's partial-response semantics on read failure.
+- Risks and boundaries: Streaming cannot preserve a pre-header `serverErr` after partial data reaches the client.
+  Preserve header sanitation, content length, framework body closure, and future transformation boundaries.
+- Verification: Proxy a slow chunked response, a large body, and a response that fails after headers.
+- Missing publication evidence: Current `upstream/master`, dependency verification, accepted error contract, benchmark, and prior art.
 
 ### ISSUE-2026-006 — daemon: preserve all server options in service arguments
 
@@ -166,18 +170,19 @@ Next finding ID: ISSUE-2026-020
 - Status: Hold.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; CLI status not reproduced.
-- Internal priority: High.
+- Evidence class: Observed for version; source-proven for updater; automation impact not measured.
+- Internal priority: Medium.
 - Confidence: High.
 - Type: Output and error mapping.
 - Publication target: Undecided.
 - Summary: Version, successful update, and already-current paths terminate with `os.Exit(1)`.
-- Evidence: `internal/runner/info.go:21-29`, `internal/updater/updater.go:49-69`, and `options.go:78-87`.
+- Evidence: `internal/runner/info.go:21-29`, `internal/updater/updater.go:49-69`, and
+  `internal/runner/options.go:78-87`.
 - Shared change pressure: Human success output and process exit status express one terminal CLI outcome.
-- Impact: Source proves success is mapped to failure for shell callers; affected automation is not measured.
+- Impact: The version path reproduced success output with failure status; updater outcomes remain source-proven only.
 - Proposed direction: End successful terminal paths with status 0 and preserve nonzero cancellation and errors.
 - Risks and boundaries: Do not fall through from update success into proxy-file or action validation.
-- Verification: Check exit status for version, successful update, already current, cancellation, and update failure.
+- Verification: Version status 0 is reproduced; still check successful update, already current, cancellation, and failure.
 - Missing publication evidence: Current `upstream/master`, controlled updater reproduction, and prior-art research.
 
 ### ISSUE-2026-010 — runner: define nonnegative timeout semantics
@@ -277,22 +282,22 @@ Next finding ID: ISSUE-2026-020
 
 ### ISSUE-2026-015 — checker: report failure stages before country filtering
 
-- Status: Hold.
+- Status: Rejected.
 - Delivery mode: Undecided.
 - Location: Not published.
-- Evidence class: Source-proven; diagnostic demand not measured.
+- Evidence class: Source-proven control flow; intended output precedence unresolved.
 - Internal priority: Medium.
 - Confidence: High.
 - Type: Error and output mapping.
 - Publication target: Undecided.
-- Summary: The checker discards errors and applies `--only-cc` before its verbose DIED branch.
-- Evidence: `internal/checker/checker.go:31-40,82-128`.
-- Shared change pressure: Failure classification, redaction, country filtering, and verbose output form one diagnostic path.
-- Impact: Source proves verbose errors remain hidden with country filters; user debugging cost is not measured.
-- Proposed direction: Handle errors first and emit stable redacted stages such as transport, request, read, or decode.
-- Risks and boundaries: Do not expose proxy credentials, add normal-mode noise, or alter successful country filtering.
-- Verification: Exercise each failure stage with verbose on and off, both with and without `--only-cc`.
-- Missing publication evidence: Current `upstream/master`, focused diagnostic reproduction, and prior-art research.
+- Summary: Country filtering precedes errors, but no contract proves verbose failures must bypass `--only-cc`.
+- Evidence: `internal/checker/checker.go:31-40,82-128` and `README.md:139-154`.
+- Shared change pressure: Error output and country filtering express one CLI output-precedence decision.
+- Impact: Source proves the ordering, but not user pain; unknown-country failures may be intentionally filtered.
+- Proposed direction: None; retain current behavior until maintainer intent establishes the precedence.
+- Risks and boundaries: Changing it would emit unqualified `DIED` lines under an explicit country filter.
+- Verification: Reconsider only with maintainer intent or observed debugging friction for the combined flags.
+- Missing publication evidence: None; rejected because the pain and output-contract gates failed.
 
 ### ISSUE-2026-016 — runner: make incomplete CLI errors actionable
 
@@ -369,3 +374,100 @@ Next finding ID: ISSUE-2026-020
 - Risks and boundaries: Do not change checker normalization or claim existing configurations are migrated.
 - Verification: Inspect all country-code examples against exact checker comparison and ISO-3166 Alpha-2.
 - Missing publication evidence: Current `upstream/master` and upstream prior-art research.
+
+### ISSUE-2026-020 — build: include every package in the short test target
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven omission; expanded test scope observed.
+- Internal priority: High.
+- Confidence: High.
+- Type: Build and verification orchestration.
+- Publication target: Undecided.
+- Summary: `make test` and `make test-extra` omit the maintained `pkg/helper/awsurl` test package.
+- Evidence: `Makefile:10-15`, `pkg/helper/awsurl/awsurl_test.go:1-7`, and `.github/CONTRIBUTING.md:28-36`.
+- Shared change pressure: The repository test command and every maintained package test express one verification contract.
+- Impact: Source proves `TestParse` is skipped; `go test -short ./...` included it and passed.
+- Proposed direction: Replace the two explicit package commands with one module-scoped `go test -short ./...`.
+- Risks and boundaries: Future packages must keep short tests deterministic, local, and free of required network access.
+- Verification: Run `make test` and require the same successful package scope as `go test -short ./...`.
+- Missing publication evidence: Current `upstream/master` and upstream prior-art research.
+
+### ISSUE-2026-021 — server: route SIGTERM through graceful shutdown
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven wiring; service stop behavior not reproduced.
+- Internal priority: High.
+- Confidence: High.
+- Type: Process and resource lifecycle.
+- Publication target: Undecided.
+- Summary: The installed child runs `server.Run` directly, which handles `os.Interrupt` but not `SIGTERM`.
+- Evidence: `internal/daemon/daemon.go:15-23,41-66`, `internal/server/server.go:67-75`, and
+  `internal/server/utils.go:12-24`.
+- Shared change pressure: Foreground, service, and container stops must enter the one server and gateway shutdown path.
+- Impact: Source proves `SIGTERM` bypasses the registered shutdown path; an installed service stop was not observed.
+- Proposed direction: Register `syscall.SIGTERM` beside `os.Interrupt` without redesigning service callbacks.
+- Risks and boundaries: This exposes existing `Stop` synchronization and error-handling weaknesses but does not own them.
+- Verification: Start the server, send `SIGTERM`, and require the same shutdown and exit path as `SIGINT`.
+- Missing publication evidence: Current `upstream/master`, direct and installed-service reproduction, and prior art.
+
+### ISSUE-2026-022 — build: restore the missing golangci-lint fallback
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Observed recipe expansion; installer execution not verified.
+- Internal priority: Medium.
+- Confidence: High.
+- Type: Build and tool orchestration.
+- Publication target: Undecided.
+- Summary: Make expands the linter presence check itself, selects the wrong branch, and names an obsolete installer host.
+- Evidence: `Makefile:5-6,15,24-31`, `.github/CONTRIBUTING.md:28-36`, and `make -n golangci-lint`.
+  Current installer guidance: https://golangci-lint.run/docs/welcome/install/local/
+- Shared change pressure: Tool detection, installer source, version selection, and binary path form one lint bootstrap.
+- Impact: The rendered recipe contains `[ -x ]`; a clean environment cannot reach a working automatic fallback.
+- Proposed direction: Use shell `command -v`, the official installer URL, and a repository-verified version pin.
+- Risks and boundaries: Preserve global-tool precedence and avoid an unverified `latest` or module dependency.
+- Verification: Remove the linter from `PATH`, run the target, and require the pinned `./bin/golangci-lint`.
+- Missing publication evidence: Current `upstream/master`, fallback execution, version compatibility, and prior art.
+
+### ISSUE-2026-023 — server: remove the synchronous request goroutine rendezvous
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven orchestration; performance not measured.
+- Internal priority: Low.
+- Confidence: High.
+- Type: Structure and request orchestration.
+- Publication target: Undecided.
+- Summary: Each request starts one goroutine and immediately waits on its single unbuffered result channel.
+- Evidence: `internal/server/handler.go:33-35,38-122`.
+- Shared change pressure: Retry execution, response return, and error mapping form one synchronous request operation.
+- Impact: Source proves scheduling, channel, and dynamic type work with no overlap; runtime cost is not measured.
+- Proposed direction: Return `(*http.Response, error)` through one private synchronous helper.
+- Risks and boundaries: Preserve retries, rotation, removal, response closure, logs, and error mapping exactly.
+- Verification: Replay one successful and one failed proxy request before and after the refactor.
+- Missing publication evidence: Current `upstream/master`, focused behavior replay, and upstream prior art.
+
+### ISSUE-2026-024 — daemon: return non-Windows service install errors
+
+- Status: Hold.
+- Delivery mode: Undecided.
+- Location: Not published.
+- Evidence class: Source-proven error loss; backend failure not reproduced.
+- Internal priority: Low.
+- Confidence: High.
+- Type: Error mapping and service lifecycle.
+- Publication target: Undecided.
+- Summary: The non-Windows branch discards install failure, logs startup, and attempts to start the missing service.
+- Evidence: `internal/daemon/daemon.go:50-66`.
+- Shared change pressure: Install outcome, startup logging, and start eligibility form one service transition.
+- Impact: Source proves the original install error is lost; affected backend frequency is not measured.
+- Proposed direction: Apply the existing Windows error-return pattern before logging or starting.
+- Risks and boundaries: Do not propagate expected first-run stop or uninstall errors.
+- Verification: Force a non-Windows install failure and require the original error with no log or start attempt.
+- Missing publication evidence: Current `upstream/master`, backend failure reproduction, platform scope, and prior art.
