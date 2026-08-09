@@ -119,9 +119,9 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-006 — daemon: preserve all server options in service arguments
 
-- Status: Ready.
+- Status: Published.
 - Delivery mode: Pull request.
-- Location: https://github.com/mubeng/mubeng/issues/316
+- Location: https://github.com/mubeng/mubeng/pull/320
 - Prerequisite issue: https://github.com/mubeng/mubeng/issues/316
 - Evidence class: Source-proven on current upstream; rendered service arguments observed; installed runtime not observed.
 - Internal priority: High.
@@ -141,11 +141,10 @@ Next finding ID: ISSUE-2026-029
   Always forward `--max-errors`, `--max-redirs`, and `--max-retries`, including zero and negative values.
 - Risks and boundaries: Exclude checker and recursive daemon flags and preserve exact parser spellings and values.
   Service quoting, stdin lifetime, SIGTERM handling, and Windows issue #220 are separate lifecycle concerns.
-- Verification: `make build` passed.
+- Verification: `make build` and `make test` passed.
   A debugger stopped before `service.New` and observed all five selected values in the final 22-element argument slice.
 - Implementation: Branch `fix/issue-2026-006-daemon-arguments`; commit `45575a0`; pushed to `origin`.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
-  An installed-service replay is required before claiming observed platform behavior.
+- Missing publication evidence: None; published claims do not assert an installed-service replay.
 
 ### ISSUE-2026-007 — proxymanager: keep watch reloads across atomic file replacement
 
@@ -226,9 +225,9 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-011 — runner: reject checker concurrency below one
 
-- Status: Ready.
+- Status: Published.
 - Delivery mode: Pull request.
-- Location: https://github.com/mubeng/mubeng/issues/313
+- Location: https://github.com/mubeng/mubeng/pull/317
 - Prerequisite issue: https://github.com/mubeng/mubeng/issues/313
 - Evidence class: Observed CLI panic; source and dependency contracts verified on current upstream.
 - Internal priority: Medium.
@@ -248,9 +247,9 @@ Next finding ID: ISSUE-2026-029
 - Risks and boundaries: Do not reject the unused flag in address/server mode, invent an upper cap, or alter valid values.
 - Verification: Before the fix, `-1` and `0` panicked while `1` and `50` exited normally.
   After the fix, invalid values returned the configured validation error without panic and valid values still exited normally.
-  `make build`, rendered help inspection, Go formatting, and LSP diagnostics passed.
+  `make build`, `make test`, rendered help inspection, Go formatting, and LSP diagnostics passed.
 - Implementation: Branch `fix/issue-2026-011-goroutine`; commit `54535b5`; pushed to `origin`.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
+- Missing publication evidence: None.
 
 ### ISSUE-2026-012 — server: decouple retry backoff from request timeout
 
@@ -406,9 +405,9 @@ Next finding ID: ISSUE-2026-029
 
 ### ISSUE-2026-020 — build: include every package in the short test target
 
-- Status: Ready.
+- Status: Published.
 - Delivery mode: Pull request.
-- Location: https://github.com/mubeng/mubeng/issues/315
+- Location: https://github.com/mubeng/mubeng/pull/319
 - Prerequisite issue: https://github.com/mubeng/mubeng/issues/315
 - Evidence class: Observed current test-scope omission and successful expanded module scope.
 - Internal priority: High.
@@ -431,13 +430,13 @@ Next finding ID: ISSUE-2026-029
   `make test VERBOSE=1` streamed the complete package scope.
   An injected exit 7 printed the underlying status and raw sentinel output, returned nonzero, and removed its temp file.
 - Implementation: Branch `build/issue-2026-020-test-scope`; commit `9c3c2db`; pushed to `origin`.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
+- Missing publication evidence: None.
 
 ### ISSUE-2026-021 — server: route SIGTERM through graceful shutdown
 
-- Status: Ready.
+- Status: Published.
 - Delivery mode: Pull request.
-- Location: https://github.com/mubeng/mubeng/issues/314
+- Location: https://github.com/mubeng/mubeng/pull/318
 - Prerequisite issue: https://github.com/mubeng/mubeng/issues/314
 - Evidence class: Observed direct SIGTERM divergence; installed-service path remains source-proven.
 - Internal priority: High.
@@ -457,10 +456,9 @@ Next finding ID: ISSUE-2026-029
 - Risks and boundaries: This exposes existing `Stop` map synchronization, remote-close, and ignored-error weaknesses.
   Those separate lifecycle problems are outside this signal-routing scope.
 - Verification: After the fix, both supervised `SIGTERM` and `SIGINT` runs logged `Interrupted. Exiting...` and exited zero.
-  `make build`, Go formatting, and LSP diagnostics passed.
+  `make build`, `make test`, Go formatting, and LSP diagnostics passed.
 - Implementation: Branch `fix/issue-2026-021-sigterm`; commit `6def82e`; pushed to `origin`.
-- Missing publication evidence: Exact prerequisite issue and pull request drafts and user approvals.
-  Installed-service reproduction is required only before claiming observed service-manager behavior.
+- Missing publication evidence: None; published claims keep installed-service behavior source-proven.
 
 ### ISSUE-2026-022 — build: restore the missing golangci-lint fallback
 
